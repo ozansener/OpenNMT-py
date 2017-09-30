@@ -244,7 +244,7 @@ def build_optim(model, checkpoint):
 
 
 def main():
-
+    print opt
     # Load train and validate data.
     print("Loading train and validate data from '%s'" % opt.data)
     train = torch.load(opt.data + '.train.pt')
