@@ -18,7 +18,6 @@ import torch.nn as nn
 import onmt
 import onmt.modules
 
-
 class Statistics(object):
     """
     Train/validate loss statistics.

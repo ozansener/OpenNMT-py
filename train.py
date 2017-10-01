@@ -13,6 +13,7 @@ import onmt.modules
 from onmt.Utils import aeq, use_gpu
 import opts
 
+
 parser = argparse.ArgumentParser(description='train.py')
 
 # opts.py

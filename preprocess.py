@@ -29,6 +29,8 @@ parser.add_argument('-valid_src', required=True,
 parser.add_argument('-valid_tgt', required=True,
                     help="Path to the validation target data")
 
+parser.add_argument('-vgg_features_file', help="Matlab file for features")
+
 parser.add_argument('-save_data', required=True,
                     help="Output file for the prepared data")
 
@@ -57,7 +59,10 @@ def main():
 
     fields = onmt.IO.ONMTDataset.get_fields(nFeatures)
     print("Building Training...")
-    train = onmt.IO.ONMTDataset(opt.train_src, opt.train_tgt, fields, opt)
+    if opt.vgg_features_file:
+        train = onmt.IO.ONMTDataset(opt.train_src, opt.train_tgt, fields, opt, img_feat_dir=opt.vgg_features_file)
+    else:
+        train = onmt.IO.ONMTDataset(opt.train_src, opt.train_tgt, fields, opt)
     print("Building Vocab...")
     onmt.IO.ONMTDataset.build_vocab(train, opt)
 
