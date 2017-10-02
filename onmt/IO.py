@@ -10,6 +10,8 @@ import torchtext.vocab
 
 import numpy
 
+import pdb
+
 PAD_WORD = '<blank>'
 UNK = 0
 BOS_WORD = '<s>'
@@ -161,7 +163,7 @@ class ONMTDataset(torchtext.data.Dataset):
 
         # TODO(ozan) figure out a way to remove 29000 from this
         if self.is_lupi:
-            feat_examples = self._read_image_features(img_feat_dir, 29000)
+            feat_examples = self._read_image_features(img_feat_dir)
 
         if tgt_examples is not None:
             if not self.is_lupi:
@@ -214,13 +216,23 @@ class ONMTDataset(torchtext.data.Dataset):
             filter_pred if opt is not None
             else None)
 
-    def _read_image_features(self, img_feat_dir, num_examples):
-        import h5py
-        with h5py.File(img_feat_dir, 'r') as file:
-            features = file['feats'][()]
-        # this is super inefficient but whatever
-        for i in range(num_examples):
-            yield {'img_feat': features[i,:]}
+    def _read_image_features(self, img_feat_dir):
+        import scipy.io as sio
+        mat_values = sio.loadmat(img_feat_dir)
+        if 'feats_train' in mat_values.keys():
+            feats = mat_values['feats_train']
+            for i in range(feats.shape[1]):
+                yield {'img_feat': feats[:,i]}
+        elif 'feats_val' in mat_values.keys():
+            feats = mat_values['feats_val']
+            for i in range(feats.shape[1]):
+                yield {'img_feat': feats[:,i]}
+        elif 'feats_test' in mat_values.keys():
+            feats = mat_values['feats_test']
+            for i in range(feats.shape[1]):
+                yield {'img_feat': feats[:,i]}
+        else:
+            print "Unparsable Mat file"
 
 
     def _read_corpus_file(self, path, truncate):

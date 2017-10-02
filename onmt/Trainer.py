@@ -18,6 +18,8 @@ import torch.nn as nn
 import onmt
 import onmt.modules
 
+import pdb
+
 class Statistics(object):
     """
     Train/validate loss statistics.
@@ -66,7 +68,7 @@ class Statistics(object):
 class Trainer(object):
     def __init__(self, model, train_iter, valid_iter,
                  train_loss, valid_loss, optim,
-                 trunc_size, shard_size):
+                 trunc_size, shard_size, multiplier):
         """
         Args:
             model: the seq2seq model.
@@ -91,6 +93,8 @@ class Trainer(object):
         # Set model in training mode.
         self.model.train()
 
+        self.multiplier = multiplier
+
     def train(self, epoch, report_func=None):
         """ Called for each epoch to train. """
         total_stats = Statistics()
@@ -109,18 +113,25 @@ class Trainer(object):
             report_stats.n_src_words += src_lengths.sum()
 
             for j in range(0, target_size-1, trunc_size):
+                #pdb.set_trace()
                 # 1. Create truncated target.
                 tgt = tgt_outer[j: j + trunc_size]
 
                 # 2. F-prop all but generator.
                 self.model.zero_grad()
-                outputs, attns, dec_state = \
-                    self.model(src, tgt, src_lengths, dec_state)
+
+                # Add dropout to the output only? 
+                # TODO(ozan) apply the same dropout to all chunks
+                # Extend the base LSTM functionality so we can apply dropout within
+                outputs, attns, dec_state, sigmas = \
+                    self.model(src, tgt, batch.img_feat, src_lengths, dec_state)
 
                 # 3. Compute loss in shards for memory efficiency.
-                batch_stats = self.train_loss.sharded_compute_loss(
-                        batch, outputs, attns, j,
-                        trunc_size, self.shard_size)
+                #batch_stats = self.train_loss.sharded_compute_loss(
+                #         sigmas, batch, outputs, attns, j,
+                #         trunc_size, self.shard_size)
+                batch_stats = self.train_loss.compute_loss_full(outputs, batch.tgt[j+1:trunc_size], sigmas, self.multiplier)
+                #torch.norm(sigmas, 2).backward()
 
                 # 4. Update the parameters and statistics.
                 self.optim.step()
@@ -152,7 +163,7 @@ class Trainer(object):
             tgt = onmt.IO.make_features(batch, 'tgt')
 
             # F-prop through the model.
-            outputs, attns, _ = self.model(src, tgt, src_lengths)
+            outputs, attns, _, sigmas = self.model(src, tgt, batch.img_feat, src_lengths)
 
             # Compute loss.
             gen_state = onmt.Loss.make_gen_state(

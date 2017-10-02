@@ -4,9 +4,53 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
+import torch.nn.functional as F
 
 import onmt
 from onmt.Utils import aeq
+
+import pdb
+import numpy as np
+
+class GaussianDropout(nn.Module):
+    """
+    Gaussian dropout
+    """
+    def __init__(self, input_feature_length, rnn_size):
+        super(GaussianDropout, self).__init__()
+        self.fc = nn.Linear(input_feature_length, rnn_size)
+        self.noise_mu = 1.0
+
+    def forward(self, input, x_star_feat):
+        if self.train:
+            #pdb.set_trace()
+            if np.isnan(np.sum(x_star_feat.data.cpu().numpy())):
+                print 'input is NaN'
+            x_star = F.relu(self.fc(x_star_feat))
+            if np.isnan(np.sum(x_star.data.cpu().numpy())):
+                print 'x* is NaN'
+                pdb.set_trace()
+            noise = self.vae_reparametrize(mu=self.noise_mu, logvar=x_star, cuda=True)
+            if np.isnan(np.sum(noise.data.cpu().numpy())):
+                print 'noise is NaN'
+            x = tuple([xx.mul(noise) for xx in input])
+        else:
+            x = input
+            noise = -1
+        return x, noise
+
+    def vae_reparametrize(self, mu, logvar, cuda):
+        std = logvar.mul(0.5).exp_()
+        if np.isnan(np.sum(std.data.cpu().numpy())):
+            print "NaNaNaNaN"
+            pdb.set_trace()
+
+        if cuda:
+            eps = torch.cuda.FloatTensor(std.size()).normal_() 
+        else:
+            eps = torch.FloatTensor(std.size()).normal_()
+        eps = Variable(eps)
+        return eps.mul(std).add_(mu)
 
 
 class EncoderBase(nn.Module):
@@ -99,7 +143,6 @@ class RNNEncoder(EncoderBase):
             outputs = unpack(outputs)[0]
 
         return hidden_t, outputs
-
 
 class RNNDecoderBase(nn.Module):
     """
@@ -424,6 +467,60 @@ class NMTModel(nn.Module):
             dec_state = None
             attns = None
         return out, attns, dec_state
+
+class NMTLupiModel(nn.Module):
+    """
+    The encoder + decoder Neural Machine Translation Model.
+    """
+    def __init__(self, encoder, decoder, gaussian_dropout, multigpu=False):
+        """
+        Args:
+            encoder(*Encoder): the various encoder.
+            decoder(*Decoder): the various decoder.
+            multigpu(bool): run parellel on multi-GPU?
+        """
+        self.multigpu = multigpu
+        super(NMTLupiModel, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.gaussian_dropout = gaussian_dropout
+
+    def forward(self, src, tgt, dropout_features, lengths, dec_state=None):
+        """
+        Args:
+            src(FloatTensor): a sequence of source tensors with
+                    optional feature tensors of size (len x batch).
+            tgt(FloatTensor): a sequence of target tensors with
+                    optional feature tensors of size (len x batch).
+            lengths([int]): an array of the src length.
+            dec_state: A decoder state object
+        Returns:
+            outputs (FloatTensor): (len x batch x hidden_size): decoder outputs
+            attns (FloatTensor): Dictionary of (src_len x batch)
+            dec_hidden (FloatTensor): tuple (1 x batch x hidden_size)
+                                      Init hidden state
+        """
+        #pdb.set_trace()
+        src = src
+        tgt = tgt[:-1]  # exclude last target from inputs
+        enc_hidden, context = self.encoder(src, lengths)
+        
+        #pdb.set_trace()
+        # We can not add any information on output since they are vocabulary coded
+        enc_hidden, sigmas = self.gaussian_dropout(enc_hidden, dropout_features)
+
+
+        enc_state = self.decoder.init_decoder_state(src, context, enc_hidden)
+        out, dec_state, attns = self.decoder(tgt, context,
+                                             enc_state if dec_state is None
+                                             else dec_state)
+        if self.multigpu:
+            # Not yet supported on multi-gpu
+            dec_state = None
+            attns = None
+        return out, attns, dec_state, sigmas
+
+
 
 
 class DecoderState(object):

@@ -11,6 +11,7 @@ from torch.autograd import Variable
 
 import onmt
 
+import pdb
 
 class LossComputeBase(nn.Module):
     """
@@ -76,6 +77,62 @@ class LossComputeBase(nn.Module):
         return v.view(-1, batch_size, v.size(1))
 
 
+class NMTLupiLossCompute(LossComputeBase):
+    """
+    Standard NMT Loss Computation.
+    """
+    def __init__(self, generator, tgt_vocab):
+        super(NMTLupiLossCompute, self).__init__(generator, tgt_vocab)
+
+        self.copy_attn = False
+        weight = torch.ones(len(tgt_vocab))
+        weight[self.padding_idx] = 0
+        self.criterion = nn.NLLLoss(weight, size_average=False)
+
+    def compute_loss_full(self, output, target, sigmas, multiplier):
+        """ See base class for args description. """
+        scores = self.generator(self.bottle(output))
+        scores_data = scores.data.clone()
+        target = target.view(-1)
+        target_data = target.data.clone()
+        loss = self.criterion(scores, target)
+        loss_data = loss.data.clone()
+        stats = self.stats(loss_data, scores_data, target_data)
+        loss = loss + multiplier* torch.norm(sigmas, 2)
+        loss.backward()
+        return stats
+
+
+    def compute_loss(self,batch, output, target, **kwargs):
+        """ See base class for args description. """
+        scores = self.generator(self.bottle(output))
+        scores_data = scores.data.clone()
+        target = target.view(-1)
+        target_data = target.data.clone()
+        loss = self.criterion(scores, target)
+        loss_data = loss.data.clone()
+        stats = self.stats(loss_data, scores_data, target_data)
+        return loss, stats
+
+    def sharded_compute_loss(self, sigmas, batch, output, attns,
+                             cur_trunc, trunc_size, shard_size):
+        """
+        Compute the loss in shards for efficiency.
+        """
+        batch_stats = onmt.Statistics()
+        range_ = (cur_trunc, cur_trunc + trunc_size)
+        gen_state = make_gen_state(output, batch, attns, range_,
+                                   self.copy_attn)
+
+        for shard in shards(gen_state, shard_size, sigmas):
+            loss, stats = self.compute_loss(batch, **shard)
+            loss.div(batch.batch_size).backward()
+            batch_stats.update(stats)
+
+        return batch_stats
+
+
+
 class NMTLossCompute(LossComputeBase):
     """
     Standard NMT Loss Computation.
@@ -129,7 +186,7 @@ def filter_gen_state(state):
             yield k, v
 
 
-def shards(state, shard_size, eval=False):
+def shards(state, shard_size, sigmas=None, eval=False):
     """
     Args:
         state: A dictionary which corresponds to the output of
@@ -158,7 +215,6 @@ def shards(state, shard_size, eval=False):
         # sequence of tensor-like sequences.
         keys, values = zip(*((k, torch.split(v, shard_size))
                              for k, v in non_none.items()))
-
         # Now, yield a dictionary for each shard. The keys are always
         # the same. values is a sequence of length #keys where each
         # element is a sequence of length #shards. We want to iterate
@@ -167,6 +223,9 @@ def shards(state, shard_size, eval=False):
         # with the keys.
         for shard_tensors in zip(*values):
             yield dict(zip(keys, shard_tensors))
+
+        if sigmas is not None:
+            torch.norm(sigmas,2).mul(1.0).backward()
 
         # Assumed backprop'd
         variables = ((state[k], v.grad.data) for k, v in non_none.items()

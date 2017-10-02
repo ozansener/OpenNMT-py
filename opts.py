@@ -123,6 +123,14 @@ def train_opts(parser):
                         with support (-param_init, param_init).
                         Use 0 to not use initialization""")
 
+    #LUPI
+    parser.add_argument('-gaussian_dropout', type=bool, default=False,
+                        help='Using gaussian dropout')
+    parser.add_argument('-dropout_features_length', type=int, default=4096, #VGG
+                        help='Length of the image features')
+    parser.add_argument('-multiplier', type=int, default=10, #VGG
+                        help='Multiplier')
+ 
     # Pretrained word vectors
     parser.add_argument('-pre_word_vecs_enc',
                         help="""If a valid path is specified, then this will load
@@ -156,7 +164,7 @@ def train_opts(parser):
                         help="""If the norm of the gradient vector exceeds this,
                         renormalize it to have the norm equal to
                         max_grad_norm""")
-    parser.add_argument('-dropout', type=float, default=0.3,
+    parser.add_argument('-dropout', type=float, default=0.0,
                         help="Dropout probability; applied in LSTM stacks.")
     parser.add_argument('-truncated_decoder', type=int, default=0,
                         help="""Truncated bptt.""")

@@ -8,6 +8,7 @@ import onmt.modules
 import onmt.IO
 from onmt.Utils import use_gpu
 
+import pdb
 
 class Translator(object):
     def __init__(self, opt, dummy_opt={}):
@@ -66,9 +67,11 @@ class Translator(object):
         tgt_in = onmt.IO.make_features(batch, 'tgt')[:-1]
 
         #  (1) run the encoder on the src
-        encStates, context = self.model.encoder(src, src_lengths)
+        encStates_, context = self.model.encoder(src, src_lengths)
+        encStates2, sigmas = self.model.gaussian_dropout(encStates_, batch.img_feat)
+
         decStates = self.model.decoder.init_decoder_state(
-                                        src, context, encStates)
+                                        src, context, encStates_)
 
         #  (2) if a target is specified, compute the 'goldScore'
         #  (i.e. log likelihood) of the target under the model
@@ -94,9 +97,12 @@ class Translator(object):
         # (1) Run the encoder on the src.
         _, src_lengths = batch.src
         src = onmt.IO.make_features(batch, 'src')
-        encStates, context = self.model.encoder(src, src_lengths)
+        encStates_, context = self.model.encoder(src, src_lengths)
+
+        encStates2, sigmas = self.model.gaussian_dropout(encStates_, batch.img_feat)
+
         decStates = self.model.decoder.init_decoder_state(
-                                        src, context, encStates)
+                                        src, context, encStates_)
 
         #  (1b) Initialize for the decoder.
         def var(a): return Variable(a, volatile=True)

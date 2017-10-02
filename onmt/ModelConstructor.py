@@ -8,12 +8,12 @@ import onmt
 import onmt.Models
 import onmt.modules
 from onmt.IO import ONMTDataset
-from onmt.Models import NMTModel, MeanEncoder, RNNEncoder, \
-                        StdRNNDecoder, InputFeedRNNDecoder
+from onmt.Models import NMTModel, NMTLupiModel, MeanEncoder, RNNEncoder, \
+                        StdRNNDecoder, InputFeedRNNDecoder, GaussianDropout
 from onmt.modules import Embeddings, ImageEncoder, CopyGenerator, \
                          TransformerEncoder, TransformerDecoder, \
                          CNNEncoder, CNNDecoder
-
+import pdb
 
 def make_embeddings(opt, word_dict, feature_dicts, for_encoder=True):
     """
@@ -48,6 +48,8 @@ def make_embeddings(opt, word_dict, feature_dicts, for_encoder=True):
                       num_word_embeddings,
                       num_feat_embeddings)
 
+def make_gaussian_dropout(opt):
+    return GaussianDropout(opt.dropout_features_length, opt.rnn_size)
 
 def make_encoder(opt, embeddings):
     """
@@ -142,8 +144,11 @@ def make_base_model(model_opt, fields, gpu, checkpoint=None):
                                      feature_dicts, for_encoder=False)
     decoder = make_decoder(model_opt, tgt_embeddings)
 
-    # Make NMTModel(= encoder + decoder).
-    model = NMTModel(encoder, decoder)
+    if model_opt.gaussian_dropout:
+        gaussian_dropout = make_gaussian_dropout(model_opt)
+        model = NMTLupiModel(encoder, decoder, gaussian_dropout)
+    else:
+        model = NMTModel(encoder, decoder)
 
     # Make Generator.
     if not model_opt.copy_attn:

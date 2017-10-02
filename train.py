@@ -45,7 +45,6 @@ if opt.gpuid:
     if opt.seed > 0:
         torch.cuda.manual_seed(opt.seed)
 
-
 # Set up the Crayon logging server.
 if opt.exp_host != "":
     from pycrayon import CrayonClient
@@ -113,7 +112,7 @@ def make_loss_compute(model, tgt_vocab, dataset, opt):
         compute = onmt.modules.CopyGeneratorLossCompute(
             model.generator, tgt_vocab, dataset, opt.copy_attn_force)
     else:
-        compute = onmt.Loss.NMTLossCompute(model.generator, tgt_vocab)
+        compute = onmt.Loss.NMTLupiLossCompute(model.generator, tgt_vocab)
 
     if use_gpu(opt):
         compute.cuda()
@@ -121,7 +120,7 @@ def make_loss_compute(model, tgt_vocab, dataset, opt):
     return compute
 
 
-def train_model(model, train_data, valid_data, fields, optim):
+def train_model(model, train_data, valid_data, fields, optim, multiplier):
 
     train_iter = make_train_data_iter(train_data, opt)
     valid_iter = make_valid_data_iter(valid_data, opt)
@@ -136,7 +135,7 @@ def train_model(model, train_data, valid_data, fields, optim):
 
     trainer = onmt.Trainer(model, train_iter, valid_iter,
                            train_loss, valid_loss, optim,
-                           trunc_size, shard_size)
+                           trunc_size, shard_size, multiplier)
 
     for epoch in range(opt.start_epoch, opt.epochs + 1):
         print('')
@@ -282,7 +281,7 @@ def main():
     optim = build_optim(model, checkpoint)
 
     # Do training.
-    train_model(model, train, valid, fields, optim)
+    train_model(model, train, valid, fields, optim, opt.multiplier)
 
 
 if __name__ == "__main__":
