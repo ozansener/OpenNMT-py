@@ -21,23 +21,13 @@ class GaussianDropout(nn.Module):
         self.fc = nn.Linear(input_feature_length, rnn_size)
         self.noise_mu = 1.0
 
-    def forward(self, input, x_star_feat):
+    def forward(self, x_star_feat):
         if self.train:
-            #pdb.set_trace()
-            if np.isnan(np.sum(x_star_feat.data.cpu().numpy())):
-                print 'input is NaN'
             x_star = F.relu(self.fc(x_star_feat))
-            if np.isnan(np.sum(x_star.data.cpu().numpy())):
-                print 'x* is NaN'
-                pdb.set_trace()
             noise = self.vae_reparametrize(mu=self.noise_mu, logvar=x_star, cuda=True)
-            if np.isnan(np.sum(noise.data.cpu().numpy())):
-                print 'noise is NaN'
-            x = tuple([xx.mul(noise) for xx in input])
         else:
-            x = input
             noise = -1
-        return x, noise
+        return noise
 
     def vae_reparametrize(self, mu, logvar, cuda):
         std = logvar.mul(0.5).exp_()
@@ -468,6 +458,7 @@ class NMTModel(nn.Module):
             attns = None
         return out, attns, dec_state
 
+
 class NMTLupiModel(nn.Module):
     """
     The encoder + decoder Neural Machine Translation Model.
@@ -501,14 +492,17 @@ class NMTLupiModel(nn.Module):
                                       Init hidden state
         """
         #pdb.set_trace()
+
+        if dropout_features is not None:
+            sigmas = self.gaussian_dropout(dropout_features)
+
         src = src
         tgt = tgt[:-1]  # exclude last target from inputs
-        enc_hidden, context = self.encoder(src, lengths)
-        
-        #pdb.set_trace()
-        # We can not add any information on output since they are vocabulary coded
-        enc_hidden, sigmas = self.gaussian_dropout(enc_hidden, dropout_features)
 
+        if dropout_features is not None:
+            enc_hidden, context = self.encoder(src, lengths, dropout_mask=sigmas)
+        else:
+            enc_hidden, context = self.encoder(src, lengths)
 
         enc_state = self.decoder.init_decoder_state(src, context, enc_hidden)
         out, dec_state, attns = self.decoder(tgt, context,
