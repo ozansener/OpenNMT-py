@@ -13,6 +13,7 @@ from onmt.Models import NMTModel, NMTLupiModel, MeanEncoder, RNNEncoder, \
 from onmt.modules import Embeddings, ImageEncoder, CopyGenerator, \
                          TransformerEncoder, TransformerDecoder, \
                          CNNEncoder, CNNDecoder
+from onmt.LSTMLupi import LSTMLupiEncoder
 import pdb
 
 def make_embeddings(opt, word_dict, feature_dicts, for_encoder=True):
@@ -67,6 +68,9 @@ def make_encoder(opt, embeddings):
                           opt.dropout, embeddings)
     elif opt.encoder_type == "mean":
         return MeanEncoder(opt.enc_layers, embeddings)
+    elif opt.encoder_type == "lupi":
+        return LSTMLupiEncoder(opt.rnn_type, opt.brnn, opt.dec_layers,
+                               opt.rnn_size, opt.dropout, embeddings)
     else:
         # "rnn" or "brnn"
         return RNNEncoder(opt.rnn_type, opt.brnn, opt.dec_layers,
@@ -122,7 +126,6 @@ def make_base_model(model_opt, fields, gpu, checkpoint=None):
     """
     assert model_opt.model_type in ["text", "img"], \
         ("Unsupported model type %s" % (model_opt.model_type))
-
     # Make encoder.
     if model_opt.model_type == "text":
         src_dict = fields["src"].vocab

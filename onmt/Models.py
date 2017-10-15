@@ -491,8 +491,6 @@ class NMTLupiModel(nn.Module):
             dec_hidden (FloatTensor): tuple (1 x batch x hidden_size)
                                       Init hidden state
         """
-        #pdb.set_trace()
-
         if dropout_features is not None:
             sigmas = self.gaussian_dropout(dropout_features)
 
@@ -513,8 +511,6 @@ class NMTLupiModel(nn.Module):
             dec_state = None
             attns = None
         return out, attns, dec_state, sigmas
-
-
 
 
 class DecoderState(object):
