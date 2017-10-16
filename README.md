@@ -137,6 +137,16 @@ wget https://staff.fnwi.uva.nl/d.elliott/wmt16/mmt16_task1_test.tgz && tar -xf m
 for l in en de; do for f in data/multi30k/*.$l; do if [[ "$f" != *"test"* ]]; then sed -i "$ d" $f; fi;  done; done
 for l in en de; do for f in data/multi30k/*.$l; do perl tokenizer.perl -a -no-escape -l $l -q  < $f > $f.atok; done; done
 python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/multi30k.atok.low -lower
+
+python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/multi30k.atok.low -lower
+
+python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/ende.org.low -lower
+
+python preprocess.py -train_src data/multi30k/train.de.atok -train_tgt data/multi30k/train.en.atok -valid_src data/multi30k/val.de.atok -valid_tgt data/multi30k/val.en.atok -save_data data/deen.org.low -lower
+
+python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/ende.img.low -vgg_features_file features.mat -lower
+
+python preprocess.py -train_src data/multi30k/train.de.atok -train_tgt data/multi30k/train.en.atok -valid_src data/multi30k/val.de.atok -valid_tgt data/multi30k/val.en.atok -save_data data/deen.img.low  -vgg_features_file features.mat-lower
 ```
 
 ### 2) Train the model.
