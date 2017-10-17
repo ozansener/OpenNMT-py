@@ -22,9 +22,9 @@ class GaussianDropout(nn.Module):
         self.noise_mu = 1.0
 
     def forward(self, x_star_feat):
-        x_star = F.relu(self.fc(x_star_feat))
-        noise = self.vae_reparametrize(mu=self.noise_mu, logvar=x_star, cuda=True)
-        return noise
+        x_star = self.fc(x_star_feat)
+        noise, sigma = self.vae_reparametrize(mu=self.noise_mu, logvar=x_star, cuda=True)
+        return noise, sigma
 
     def vae_reparametrize(self, mu, logvar, cuda):
         std = logvar.mul(0.5).exp_()
@@ -34,7 +34,7 @@ class GaussianDropout(nn.Module):
         else:
             eps = torch.FloatTensor(std.size()).normal_()
         eps = Variable(eps)
-        return eps.mul(std).add_(mu)
+        return eps.mul(std).add_(mu), std
 
 
 class EncoderBase(nn.Module):
@@ -486,13 +486,13 @@ class NMTLupiModel(nn.Module):
                                       Init hidden state
         """
         if dropout_features is not None:
-            sigmas = self.gaussian_dropout(dropout_features)
+            noise, sigmas = self.gaussian_dropout(dropout_features)
 
         src = src
         tgt = tgt[:-1]  # exclude last target from inputs
 
         if dropout_features is not None:
-            enc_hidden, context = self.encoder(src, lengths, dropout_mask=sigmas)
+            enc_hidden, context = self.encoder(src, lengths, dropout_mask=noise)
         else:
             enc_hidden, context = self.encoder(src, lengths)
 

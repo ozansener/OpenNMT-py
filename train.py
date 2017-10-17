@@ -113,7 +113,7 @@ def make_loss_compute(model, tgt_vocab, dataset, opt):
             model.generator, tgt_vocab, dataset, opt.copy_attn_force)
     else:
         if opt.gaussian_dropout:
-            compute = onmt.Loss.NMTLossCompute(model.generator, tgt_vocab)
+            compute = onmt.Loss.NMTLupiLossCompute(model.generator, tgt_vocab)
         else:
             compute = onmt.Loss.NMTLossCompute(model.generator, tgt_vocab)
  

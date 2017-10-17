@@ -128,7 +128,7 @@ class Trainer(object):
                         self.model(src, tgt, batch.img_feat, src_lengths, dec_state)
                     batch_stats = self.train_loss.sharded_compute_loss(
                               batch, outputs, attns, j,
-                              trunc_size, self.shard_size)
+                              trunc_size, self.shard_size, sigmas, self.multiplier)
                 else:
                     outputs, attns, dec_state  = \
                         self.model(src, tgt, src_lengths, dec_state)
@@ -136,7 +136,6 @@ class Trainer(object):
                               batch, outputs, attns, j,
                               trunc_size, self.shard_size)
                 #batch_stats = self.train_loss.compute_loss_full(outputs, batch.tgt[j+1:trunc_size], sigmas, self.multiplier)
-                #torch.norm(sigmas, 2).backward()
 
                 # 4. Update the parameters and statistics.
                 self.optim.step()
