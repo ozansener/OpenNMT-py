@@ -4,9 +4,37 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
+import torch.nn.functional as F
 
 import onmt
 from onmt.Utils import aeq
+
+import pdb
+import numpy as np
+
+class GaussianDropout(nn.Module):
+    """
+    Gaussian dropout
+    """
+    def __init__(self, input_feature_length, rnn_size):
+        super(GaussianDropout, self).__init__()
+        self.fc = nn.Linear(input_feature_length, rnn_size)
+        self.noise_mu = 1.0
+
+    def forward(self, x_star_feat):
+        x_star = self.fc(x_star_feat)
+        noise, sigma = self.vae_reparametrize(mu=self.noise_mu, logvar=x_star, cuda=True)
+        return noise, sigma
+
+    def vae_reparametrize(self, mu, logvar, cuda):
+        std = logvar.mul(0.5).exp_()
+
+        if cuda:
+            eps = torch.cuda.FloatTensor(std.size()).normal_() 
+        else:
+            eps = torch.FloatTensor(std.size()).normal_()
+        eps = Variable(eps)
+        return eps.mul(std).add_(mu), std
 
 
 class EncoderBase(nn.Module):
@@ -99,7 +127,6 @@ class RNNEncoder(EncoderBase):
             outputs = unpack(outputs)[0]
 
         return hidden_t, outputs
-
 
 class RNNDecoderBase(nn.Module):
     """
@@ -424,6 +451,60 @@ class NMTModel(nn.Module):
             dec_state = None
             attns = None
         return out, attns, dec_state
+
+
+class NMTLupiModel(nn.Module):
+    """
+    The encoder + decoder Neural Machine Translation Model.
+    """
+    def __init__(self, encoder, decoder, gaussian_dropout, multigpu=False):
+        """
+        Args:
+            encoder(*Encoder): the various encoder.
+            decoder(*Decoder): the various decoder.
+            multigpu(bool): run parellel on multi-GPU?
+        """
+        self.multigpu = multigpu
+        super(NMTLupiModel, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.gaussian_dropout = gaussian_dropout
+
+    def forward(self, src, tgt, dropout_features, lengths, dec_state=None):
+        """
+        Args:
+            src(FloatTensor): a sequence of source tensors with
+                    optional feature tensors of size (len x batch).
+            tgt(FloatTensor): a sequence of target tensors with
+                    optional feature tensors of size (len x batch).
+            lengths([int]): an array of the src length.
+            dec_state: A decoder state object
+        Returns:
+            outputs (FloatTensor): (len x batch x hidden_size): decoder outputs
+            attns (FloatTensor): Dictionary of (src_len x batch)
+            dec_hidden (FloatTensor): tuple (1 x batch x hidden_size)
+                                      Init hidden state
+        """
+        if dropout_features is not None:
+            noise, sigmas = self.gaussian_dropout(dropout_features)
+
+        src = src
+        tgt = tgt[:-1]  # exclude last target from inputs
+
+        if dropout_features is not None:
+            enc_hidden, context = self.encoder(src, lengths, dropout_mask=noise)
+        else:
+            enc_hidden, context = self.encoder(src, lengths)
+
+        enc_state = self.decoder.init_decoder_state(src, context, enc_hidden)
+        out, dec_state, attns = self.decoder(tgt, context,
+                                             enc_state if dec_state is None
+                                             else dec_state)
+        if self.multigpu:
+            # Not yet supported on multi-gpu
+            dec_state = None
+            attns = None
+        return out, attns, dec_state, sigmas
 
 
 class DecoderState(object):

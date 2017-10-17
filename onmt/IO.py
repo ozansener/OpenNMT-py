@@ -8,6 +8,10 @@ import torch
 import torchtext.data
 import torchtext.vocab
 
+import numpy
+
+import pdb
+
 PAD_WORD = '<blank>'
 UNK = 0
 BOS_WORD = '<s>'
@@ -101,7 +105,6 @@ class OrderedIterator(torchtext.data.Iterator):
                                           self.batch_size_fn):
                 self.batches.append(sorted(b, key=self.sort_key))
 
-
 class ONMTDataset(torchtext.data.Dataset):
     """Defines a dataset for machine translation."""
 
@@ -111,7 +114,7 @@ class ONMTDataset(torchtext.data.Dataset):
         return -len(ex.src)
 
     def __init__(self, src_path, tgt_path, fields, opt,
-                 src_img_dir=None, **kwargs):
+                 src_img_dir=None, img_feat_dir=None, **kwargs):
         """
         Create a TranslationDataset given paths and fields.
 
@@ -126,6 +129,11 @@ class ONMTDataset(torchtext.data.Dataset):
             self.type_ = "img"
         else:
             self.type_ = "text"
+
+        if img_feat_dir is not None:
+            self.is_lupi = True
+        else:
+            self.is_lupi = None
 
         if self.type_ == "text":
             self.src_vocabs = []
@@ -152,12 +160,21 @@ class ONMTDataset(torchtext.data.Dataset):
         # Each element is a dictionary whose keys represent at minimum
         # the src tokens and their indices and potentially also the
         # src and tgt features and alignment information.
+
+        # TODO(ozan) figure out a way to remove 29000 from this
+        if self.is_lupi:
+            feat_examples = self._read_image_features(img_feat_dir)
+
         if tgt_examples is not None:
-            examples = (join_dicts(src, tgt)
-                        for src, tgt in zip(src_examples, tgt_examples))
+            if not self.is_lupi:
+                examples = (join_dicts(src, tgt)
+                            for src, tgt in zip(src_examples, tgt_examples))
+            else:
+                examples = (join_dicts(src, tgt, feat)
+                            for src, tgt, feat in zip(src_examples, tgt_examples, feat_examples))
         else:
             examples = src_examples
-
+        
         def dynamic_dict(examples):
             for example in examples:
                 src = example["src"]
@@ -198,6 +215,25 @@ class ONMTDataset(torchtext.data.Dataset):
             fields,
             filter_pred if opt is not None
             else None)
+
+    def _read_image_features(self, img_feat_dir):
+        import scipy.io as sio
+        mat_values = sio.loadmat(img_feat_dir)
+        if 'feats_train' in mat_values.keys():
+            feats = mat_values['feats_train']
+            for i in range(feats.shape[1]):
+                yield {'img_feat': feats[:,i]}
+        elif 'feats_val' in mat_values.keys():
+            feats = mat_values['feats_val']
+            for i in range(feats.shape[1]):
+                yield {'img_feat': feats[:,i]}
+        elif 'feats_test' in mat_values.keys():
+            feats = mat_values['feats_test']
+            for i in range(feats.shape[1]):
+                yield {'img_feat': feats[:,i]}
+        else:
+            print "Unparsable Mat file"
+
 
     def _read_corpus_file(self, path, truncate):
         """
@@ -337,6 +373,14 @@ class ONMTDataset(torchtext.data.Dataset):
         fields["indices"] = torchtext.data.Field(
             use_vocab=False, tensor_type=torch.LongTensor,
             sequential=False)
+
+        def make_arr(data, _):
+            return numpy.array(data)
+
+        fields["img_feat"] = torchtext.data.Field(
+            use_vocab=False, tensor_type=torch.FloatTensor,
+            postprocessing=make_arr, sequential=False)
+
 
         return fields
 

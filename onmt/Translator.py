@@ -8,6 +8,7 @@ import onmt.modules
 import onmt.IO
 from onmt.Utils import use_gpu
 
+import pdb
 
 class Translator(object):
     def __init__(self, opt, dummy_opt={}):
@@ -66,7 +67,12 @@ class Translator(object):
         tgt_in = onmt.IO.make_features(batch, 'tgt')[:-1]
 
         #  (1) run the encoder on the src
-        encStates, context = self.model.encoder(src, src_lengths)
+        if isinstance(self.model, onmt.Models.NMTLupiModel): 
+            sigmas = self.model.gaussian_dropout(batch.img_feat)
+            encStates, context = self.model.encoder(src, src_lengths, dropout_mask=sigmas)
+        else:
+            encStates, context = self.model.encoder(src, src_lengths)
+ 
         decStates = self.model.decoder.init_decoder_state(
                                         src, context, encStates)
 
@@ -94,7 +100,14 @@ class Translator(object):
         # (1) Run the encoder on the src.
         _, src_lengths = batch.src
         src = onmt.IO.make_features(batch, 'src')
-        encStates, context = self.model.encoder(src, src_lengths)
+
+        if isinstance(self.model, onmt.Models.NMTLupiModel): 
+            sigmas = self.model.gaussian_dropout(batch.img_feat)
+            encStates, context = self.model.encoder(src, src_lengths, dropout_mask=sigmas)
+        else:
+            encStates, context = self.model.encoder(src, src_lengths)
+ 
+
         decStates = self.model.decoder.init_decoder_state(
                                         src, context, encStates)
 

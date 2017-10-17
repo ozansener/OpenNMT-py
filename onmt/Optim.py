@@ -60,13 +60,14 @@ class Optim(object):
         """
 
         if self.start_decay_at is not None and epoch >= self.start_decay_at:
-            self.start_decay = True
+            self.start_decay = False
         if self.last_ppl is not None and ppl > self.last_ppl:
             self.start_decay = True
 
         if self.start_decay:
             self.lr = self.lr * self.lr_decay
             print("Decaying learning rate to %g" % self.lr)
+            self.start_decay = False
 
         self.last_ppl = ppl
         self.optimizer.param_groups[0]['lr'] = self.lr

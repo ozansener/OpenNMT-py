@@ -5,12 +5,14 @@ This includes: LossComputeBase and the standard NMTLossCompute, and
                sharded loss compute stuff.
 """
 from __future__ import division
+from __future__ import print_function
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
 import onmt
 
+import pdb
 
 class LossComputeBase(nn.Module):
     """
@@ -100,8 +102,37 @@ class NMTLossCompute(LossComputeBase):
         loss_data = loss.data.clone()
 
         stats = self.stats(loss_data, scores_data, target_data)
-
         return loss, stats
+
+
+class NMTLupiLossCompute(NMTLossCompute):
+    """
+    Standard NMT Loss Computation.
+    """
+    def __init__(self, generator, tgt_vocab):
+        super(NMTLossCompute, self).__init__(generator, tgt_vocab)
+
+        self.copy_attn = False
+        weight = torch.ones(len(tgt_vocab))
+        weight[self.padding_idx] = 0
+        self.criterion = nn.NLLLoss(weight, size_average=False)
+
+    def sharded_compute_loss(self, batch, output, attns,
+                             cur_trunc, trunc_size, shard_size, sigmas, multiplier):
+        """
+        Compute the loss in shards for efficiency.
+        """
+        batch_stats = onmt.Statistics()
+        range_ = (cur_trunc, cur_trunc + trunc_size)
+        gen_state = make_gen_state(output, batch, attns, range_,
+                                   self.copy_attn)
+
+        for shard in shards(gen_state, shard_size, sigmas, multiplier):
+            loss, stats = self.compute_loss(batch, **shard)
+            loss.div(batch.batch_size).backward()
+            batch_stats.update(stats)
+
+        return batch_stats
 
 
 def make_gen_state(output, batch, attns, range_, copy_attn=None):
@@ -129,7 +160,7 @@ def filter_gen_state(state):
             yield k, v
 
 
-def shards(state, shard_size, eval=False):
+def shards(state, shard_size, sigmas=None, multiplier=1.0, eval=False):
     """
     Args:
         state: A dictionary which corresponds to the output of
@@ -158,7 +189,6 @@ def shards(state, shard_size, eval=False):
         # sequence of tensor-like sequences.
         keys, values = zip(*((k, torch.split(v, shard_size))
                              for k, v in non_none.items()))
-
         # Now, yield a dictionary for each shard. The keys are always
         # the same. values is a sequence of length #keys where each
         # element is a sequence of length #shards. We want to iterate
@@ -167,9 +197,14 @@ def shards(state, shard_size, eval=False):
         # with the keys.
         for shard_tensors in zip(*values):
             yield dict(zip(keys, shard_tensors))
-
+ 
         # Assumed backprop'd
         variables = ((state[k], v.grad.data) for k, v in non_none.items()
                      if isinstance(v, Variable) and v.grad is not None)
+
         inputs, grads = zip(*variables)
+        if sigmas is not None:
+            sigma_loss = torch.norm(sigmas,2).mul(multiplier)
+            inputs = inputs + (sigma_loss,)
+            grads = grads + (None,)
         torch.autograd.backward(inputs, grads)

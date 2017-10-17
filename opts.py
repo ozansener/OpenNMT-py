@@ -36,7 +36,7 @@ def model_opts(parser):
 
     # RNN Options
     parser.add_argument('-encoder_type', type=str, default='rnn',
-                        choices=['rnn', 'brnn', 'mean', 'transformer', 'cnn'],
+                        choices=['rnn', 'brnn', 'lupi', 'mean', 'transformer', 'cnn'],
                         help="""Type of encoder layer to use.""")
     parser.add_argument('-decoder_type', type=str, default='rnn',
                         choices=['rnn', 'transformer', 'cnn'],
@@ -123,6 +123,14 @@ def train_opts(parser):
                         with support (-param_init, param_init).
                         Use 0 to not use initialization""")
 
+    #LUPI
+    parser.add_argument('-gaussian_dropout', type=bool, default=False,
+                        help='Using gaussian dropout')
+    parser.add_argument('-dropout_features_length', type=int, default=4096, #VGG
+                        help='Length of the image features')
+    parser.add_argument('-multiplier', type=float, default=10, #VGG
+                        help='Multiplier')
+ 
     # Pretrained word vectors
     parser.add_argument('-pre_word_vecs_enc',
                         help="""If a valid path is specified, then this will load
@@ -149,7 +157,7 @@ def train_opts(parser):
                         uses more memory.""")
     parser.add_argument('-epochs', type=int, default=13,
                         help='Number of training epochs')
-    parser.add_argument('-optim', default='sgd',
+    parser.add_argument('-optim', default='adam',
                         choices=['sgd', 'adagrad', 'adadelta', 'adam'],
                         help="""Optimization method.""")
     parser.add_argument('-max_grad_norm', type=float, default=5,
@@ -161,7 +169,7 @@ def train_opts(parser):
     parser.add_argument('-truncated_decoder', type=int, default=0,
                         help="""Truncated bptt.""")
     # learning rate
-    parser.add_argument('-learning_rate', type=float, default=1.0,
+    parser.add_argument('-learning_rate', type=float, default=0.001,
                         help="""Starting learning rate. If adagrad/adadelta/adam
                         is used, then this is the global learning rate.
                         Recommended settings: sgd = 1, adagrad = 0.1,
@@ -171,7 +179,7 @@ def train_opts(parser):
                         this much if (i) perplexity does not decrease on the
                         validation set or (ii) epoch has gone past
                         start_decay_at""")
-    parser.add_argument('-start_decay_at', type=int, default=8,
+    parser.add_argument('-start_decay_at', type=int, default=15,
                         help="""Start decaying every epoch after and including this
                         epoch""")
     parser.add_argument('-start_checkpoint_at', type=int, default=0,

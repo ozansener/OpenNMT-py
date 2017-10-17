@@ -137,25 +137,60 @@ wget https://staff.fnwi.uva.nl/d.elliott/wmt16/mmt16_task1_test.tgz && tar -xf m
 for l in en de; do for f in data/multi30k/*.$l; do if [[ "$f" != *"test"* ]]; then sed -i "$ d" $f; fi;  done; done
 for l in en de; do for f in data/multi30k/*.$l; do perl tokenizer.perl -a -no-escape -l $l -q  < $f > $f.atok; done; done
 python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/multi30k.atok.low -lower
+
+python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/multi30k.atok.low -lower
+
+python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/ende.org.low -lower
+
+python preprocess.py -train_src data/multi30k/train.de.atok -train_tgt data/multi30k/train.en.atok -valid_src data/multi30k/val.de.atok -valid_tgt data/multi30k/val.en.atok -save_data data/deen.org.low -lower
+
+python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/ende.img.low -vgg_features_file features.mat -lower
+
+python preprocess.py -train_src data/multi30k/train.de.atok -train_tgt data/multi30k/train.en.atok -valid_src data/multi30k/val.de.atok -valid_tgt data/multi30k/val.en.atok -save_data data/deen.img.low  -vgg_features_file features.mat-lower
 ```
 
 ### 2) Train the model.
 
 ```bash
 python train.py -data data/multi30k.atok.low.train.pt -save_model multi30k_model -gpuid 0
+
+python train.py -data data/ende.org.low -save_model ende_original_model -gpuid 0
+
+python train.py -data data/deen.org.low -save_model deen_original_model -gpuid 3
+
+python train.py -data data/ende.img.low -save_model ende_img_model -gpuid 0 -gaussian_dropout 1 -encoder_type lupi
+
+python train.py -data data/deen.img.low -save_model deen_img_model -gpuid 3 -gaussian_dropout 1 -encoder_type lupi
+
 ```
 
 ### 3) Translate sentences.
 
 ```bash
-python translate.py -gpu 0 -model multi30k_model_e13_*.pt -src data/multi30k/test.en.atok -tgt data/multi30k/test.de.atok -replace_unk -verbose -output multi30k.test.pred.atok
+python translate.py -gpu 0 -model ende_original_model_acc_66.12_ppl_8.46_e13.pt -src data/multi30k/test.en.atok -tgt data/multi30k/test.de.atok -replace_unk -verbose -output ende_original_model_output_e13
+
+python translate.py -gpu 0 -model deen_original_model_acc_68.60_ppl_6.71_e13.pt -src data/multi30k/test.de.atok -tgt data/multi30k/test.en.atok -replace_unk -verbose -output deen_original_model_output_e13
 ```
 
 ### 4) Evaluate.
 
 ```bash
-perl tools/multi-bleu.perl data/multi30k/test.de.atok < multi30k.test.pred.atok
+perl tools/multi-bleu.perl data/multi30k/test.de.atok < ende_original_model_output_e13
+
+perl tools/multi-bleu.perl data/multi30k/test.en.atok < deen_original_model_output_e13
 ```
+```
+ende_original_model_output_e13: BLEU = 33.71, 65.3/40.6/27.8/19.0 (BP=0.979, ratio=0.979, hyp_len=11981, ref_len=12232)
+
+deen_original_model_output_e13: BLEU = 38.40, 69.8/46.7/32.1/22.4 (BP=0.982, ratio=0.982, hyp_len=12825, ref_len=13058)
+
+deen_img_model_output_e13: BLEU = 32.15, 62.5/39.5/25.7/16.8 (BP=1.000, ratio=1.083, hyp_len=14143, ref_len=13058)
+
+ende_img_model_output_e13: BLEU = 28.10, 58.5/34.0/22.0/14.2 (BP=1.000, ratio=1.098, hyp_len=13426, ref_len=12232)
+
+ende_1: BLEU = 38.39, 63.6/39.6/27.3/18.9 (BP=1.000, ratio=1.026, hyp_len=12546, ref_len=12232)
+
+deen_2: BLEU = 42.34, 68.1/44.6/30.1/20.7 (BP=1.000, ratio=1.013, hyp_len=13227, ref_len=13058)
 
 ## Pretrained Models
 
