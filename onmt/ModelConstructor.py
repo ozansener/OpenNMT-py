@@ -174,11 +174,13 @@ def make_base_model(model_opt, fields, gpu, checkpoint=None):
             print('Intializing parameters.')
             for p in model.parameters():
                 p.data.uniform_(-model_opt.param_init, model_opt.param_init)
+            if model_opt.gaussian_dropout:
+                gaussian_dropout.fc.weight.data.normal_(0,0.01)
+                gaussian_dropout.fc.bias.data.zero_()
         model.encoder.embeddings.load_pretrained_vectors(
                 model_opt.pre_word_vecs_enc, model_opt.fix_word_vecs_enc)
         model.decoder.embeddings.load_pretrained_vectors(
                 model_opt.pre_word_vecs_dec, model_opt.fix_word_vecs_dec)
-
     # add the generator to the module (does this register the parameter?)
     model.generator = generator
 

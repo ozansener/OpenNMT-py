@@ -112,8 +112,11 @@ def make_loss_compute(model, tgt_vocab, dataset, opt):
         compute = onmt.modules.CopyGeneratorLossCompute(
             model.generator, tgt_vocab, dataset, opt.copy_attn_force)
     else:
-        compute = onmt.Loss.NMTLupiLossCompute(model.generator, tgt_vocab)
-
+        if opt.gaussian_dropout:
+            compute = onmt.Loss.NMTLossCompute(model.generator, tgt_vocab)
+        else:
+            compute = onmt.Loss.NMTLossCompute(model.generator, tgt_vocab)
+ 
     if use_gpu(opt):
         compute.cuda()
 

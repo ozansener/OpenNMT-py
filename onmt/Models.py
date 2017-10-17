@@ -22,18 +22,12 @@ class GaussianDropout(nn.Module):
         self.noise_mu = 1.0
 
     def forward(self, x_star_feat):
-        if self.train:
-            x_star = F.relu(self.fc(x_star_feat))
-            noise = self.vae_reparametrize(mu=self.noise_mu, logvar=x_star, cuda=True)
-        else:
-            noise = -1
+        x_star = F.relu(self.fc(x_star_feat))
+        noise = self.vae_reparametrize(mu=self.noise_mu, logvar=x_star, cuda=True)
         return noise
 
     def vae_reparametrize(self, mu, logvar, cuda):
         std = logvar.mul(0.5).exp_()
-        if np.isnan(np.sum(std.data.cpu().numpy())):
-            print "NaNaNaNaN"
-            pdb.set_trace()
 
         if cuda:
             eps = torch.cuda.FloatTensor(std.size()).normal_() 

@@ -130,7 +130,7 @@ class ONMTDataset(torchtext.data.Dataset):
         else:
             self.type_ = "text"
 
-        if img_feat_dir:
+        if img_feat_dir is not None:
             self.is_lupi = True
         else:
             self.is_lupi = None

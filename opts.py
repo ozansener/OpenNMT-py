@@ -128,7 +128,7 @@ def train_opts(parser):
                         help='Using gaussian dropout')
     parser.add_argument('-dropout_features_length', type=int, default=4096, #VGG
                         help='Length of the image features')
-    parser.add_argument('-multiplier', type=int, default=10, #VGG
+    parser.add_argument('-multiplier', type=float, default=10, #VGG
                         help='Multiplier')
  
     # Pretrained word vectors
@@ -157,19 +157,19 @@ def train_opts(parser):
                         uses more memory.""")
     parser.add_argument('-epochs', type=int, default=13,
                         help='Number of training epochs')
-    parser.add_argument('-optim', default='sgd',
+    parser.add_argument('-optim', default='adam',
                         choices=['sgd', 'adagrad', 'adadelta', 'adam'],
                         help="""Optimization method.""")
     parser.add_argument('-max_grad_norm', type=float, default=5,
                         help="""If the norm of the gradient vector exceeds this,
                         renormalize it to have the norm equal to
                         max_grad_norm""")
-    parser.add_argument('-dropout', type=float, default=0.0,
+    parser.add_argument('-dropout', type=float, default=0.3,
                         help="Dropout probability; applied in LSTM stacks.")
     parser.add_argument('-truncated_decoder', type=int, default=0,
                         help="""Truncated bptt.""")
     # learning rate
-    parser.add_argument('-learning_rate', type=float, default=1.0,
+    parser.add_argument('-learning_rate', type=float, default=0.001,
                         help="""Starting learning rate. If adagrad/adadelta/adam
                         is used, then this is the global learning rate.
                         Recommended settings: sgd = 1, adagrad = 0.1,
@@ -179,7 +179,7 @@ def train_opts(parser):
                         this much if (i) perplexity does not decrease on the
                         validation set or (ii) epoch has gone past
                         start_decay_at""")
-    parser.add_argument('-start_decay_at', type=int, default=8,
+    parser.add_argument('-start_decay_at', type=int, default=15,
                         help="""Start decaying every epoch after and including this
                         epoch""")
     parser.add_argument('-start_checkpoint_at', type=int, default=0,

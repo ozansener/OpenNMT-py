@@ -67,11 +67,14 @@ class Translator(object):
         tgt_in = onmt.IO.make_features(batch, 'tgt')[:-1]
 
         #  (1) run the encoder on the src
-        encStates_, context = self.model.encoder(src, src_lengths)
-        encStates2, sigmas = self.model.gaussian_dropout(encStates_, batch.img_feat)
-
+        if isinstance(self.model, onmt.Models.NMTLupiModel): 
+            sigmas = self.model.gaussian_dropout(batch.img_feat)
+            encStates, context = self.model.encoder(src, src_lengths, dropout_mask=sigmas)
+        else:
+            encStates, context = self.model.encoder(src, src_lengths)
+ 
         decStates = self.model.decoder.init_decoder_state(
-                                        src, context, encStates_)
+                                        src, context, encStates)
 
         #  (2) if a target is specified, compute the 'goldScore'
         #  (i.e. log likelihood) of the target under the model
@@ -97,12 +100,16 @@ class Translator(object):
         # (1) Run the encoder on the src.
         _, src_lengths = batch.src
         src = onmt.IO.make_features(batch, 'src')
-        encStates_, context = self.model.encoder(src, src_lengths)
 
-        encStates2, sigmas = self.model.gaussian_dropout(encStates_, batch.img_feat)
+        if isinstance(self.model, onmt.Models.NMTLupiModel): 
+            sigmas = self.model.gaussian_dropout(batch.img_feat)
+            encStates, context = self.model.encoder(src, src_lengths, dropout_mask=sigmas)
+        else:
+            encStates, context = self.model.encoder(src, src_lengths)
+ 
 
         decStates = self.model.decoder.init_decoder_state(
-                                        src, context, encStates_)
+                                        src, context, encStates)
 
         #  (1b) Initialize for the decoder.
         def var(a): return Variable(a, volatile=True)
