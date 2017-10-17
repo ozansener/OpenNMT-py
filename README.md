@@ -153,6 +153,15 @@ python preprocess.py -train_src data/multi30k/train.de.atok -train_tgt data/mult
 
 ```bash
 python train.py -data data/multi30k.atok.low.train.pt -save_model multi30k_model -gpuid 0
+
+python train.py -data data/ende.org.low -save_model ende_original_model -gpuid 0
+
+python train.py -data data/deen.org.low -save_model deen_original_model -gpuid 3
+
+python train.py -data data/ende.img.low -save_model ende_img_model -gpuid 0 -gaussian_dropout 1 -encoder_type lupi
+
+python train.py -data data/deen.img.low -save_model deen_img_model -gpuid 3 -gaussian_dropout 1 -encoder_type lupi
+
 ```
 
 ### 3) Translate sentences.
