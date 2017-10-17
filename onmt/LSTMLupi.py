@@ -47,15 +47,14 @@ class LSTMLupiEncoder(EncoderBase):
 
         if hidden is not None:
             outputs0, hidden_t0 = self.rnn1(packed_emb, hidden[0])
-            mask = Variable(torch.Tensor(outputs0.size(0), outputs0.size(1), 500).fill_(0.3).bernoulli_()).cuda()
             if self.training:
-                outputs0 = outputs0.mul(mask)
+                outputs0 = outputs0.mul(dropout_mask)
             outputs1, hidden_t1 = self.rnn2(outputs0,hidden[1])
         else:
             outputs0, hidden_t0 = self.rnn1(packed_emb, None)
             mask = Variable(torch.Tensor(outputs0.size(0), outputs0.size(1), 500).fill_(0.3).bernoulli_()).cuda()
             if self.training:
-                outputs0 = outputs0.mul(mask)
+                outputs0 = outputs0.mul(dropout_mask)
             outputs1, hidden_t1 = self.rnn2(outputs0,None)
 
         if lengths is not None and not self.no_pack_padded_seq:

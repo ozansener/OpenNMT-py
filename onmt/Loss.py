@@ -102,7 +102,6 @@ class NMTLossCompute(LossComputeBase):
         loss_data = loss.data.clone()
 
         stats = self.stats(loss_data, scores_data, target_data)
-
         return loss, stats
 
 
