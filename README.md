@@ -167,14 +167,25 @@ python train.py -data data/deen.img.low -save_model deen_img_model -gpuid 3 -gau
 ### 3) Translate sentences.
 
 ```bash
-python translate.py -gpu 0 -model multi30k_model_e13_*.pt -src data/multi30k/test.en.atok -tgt data/multi30k/test.de.atok -replace_unk -verbose -output multi30k.test.pred.atok
+python translate.py -gpu 0 -model ende_original_model_acc_66.12_ppl_8.46_e13.pt -src data/multi30k/test.en.atok -tgt data/multi30k/test.de.atok -replace_unk -verbose -output ende_original_model_output_e13
+
+python translate.py -gpu 0 -model deen_original_model_acc_68.60_ppl_6.71_e13.pt -src data/multi30k/test.de.atok -tgt data/multi30k/test.en.atok -replace_unk -verbose -output deen_original_model_output_e13
 ```
 
 ### 4) Evaluate.
 
 ```bash
-perl tools/multi-bleu.perl data/multi30k/test.de.atok < multi30k.test.pred.atok
+perl tools/multi-bleu.perl data/multi30k/test.de.atok < ende_original_model_output_e13
+
+perl tools/multi-bleu.perl data/multi30k/test.en.atok < deen_original_model_output_e13
 ```
+
+± |full_implementation U:10 ?:33 ✗| → perl tools/multi-bleu.perl data/multi30k/test.de.atok < ende_original_model_output_e13
+BLEU = 33.71, 65.3/40.6/27.8/19.0 (BP=0.979, ratio=0.979, hyp_len=11981, ref_len=12232)
+
+ 2017-10-16 18:20:26 ⌚  capri17 in /cvgl2/u/ozansener/translation_experiments/OpenNMT-py
+± |full_implementation U:10 ?:33 ✗| → perl tools/multi-bleu.perl data/multi30k/test.en.atok < deen_original_model_output_e13
+BLEU = 38.40, 69.8/46.7/32.1/22.4 (BP=0.982, ratio=0.982, hyp_len=12825, ref_len=13058)
 
 ## Pretrained Models
 
