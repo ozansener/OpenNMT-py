@@ -187,6 +187,14 @@ BLEU = 33.71, 65.3/40.6/27.8/19.0 (BP=0.979, ratio=0.979, hyp_len=11981, ref_len
 ± |full_implementation U:10 ?:33 ✗| → perl tools/multi-bleu.perl data/multi30k/test.en.atok < deen_original_model_output_e13
 BLEU = 38.40, 69.8/46.7/32.1/22.4 (BP=0.982, ratio=0.982, hyp_len=12825, ref_len=13058)
 
+ 2017-10-16 20:55:32 ⌚  capri17 in /cvgl2/u/ozansener/translation_experiments/OpenNMT-py
+± |full_implementation ?:35 ✗| → perl tools/multi-bleu.perl data/multi30k/test.en.atok < deen_img_model_output_e13
+BLEU = 32.15, 62.5/39.5/25.7/16.8 (BP=1.000, ratio=1.083, hyp_len=14143, ref_len=13058)
+
+ 2017-10-16 20:55:41 ⌚  capri17 in /cvgl2/u/ozansener/translation_experiments/OpenNMT-py
+± |full_implementation ?:35 ✗| → perl tools/multi-bleu.perl data/multi30k/test.de.atok < ende_img_model_output_e13
+BLEU = 28.10, 58.5/34.0/22.0/14.2 (BP=1.000, ratio=1.098, hyp_len=13426, ref_len=12232)
+
 ## Pretrained Models
 
 The following pretrained models can be downloaded and used with translate.py (These were trained with an older version of the code; they will be updated soon).
