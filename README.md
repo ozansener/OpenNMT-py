@@ -192,6 +192,9 @@ ende_1: BLEU = 38.39, 63.6/39.6/27.3/18.9 (BP=1.000, ratio=1.026, hyp_len=12546,
 
 deen_2: BLEU = 42.34, 68.1/44.6/30.1/20.7 (BP=1.000, ratio=1.013, hyp_len=13227, ref_len=13058)
 
+EN -> DE METEOR: 52.079 / 54.935
+DE -> EN METEOR: 53.934 / 56.017
+
 ## Pretrained Models
 
 The following pretrained models can be downloaded and used with translate.py (These were trained with an older version of the code; they will be updated soon).
